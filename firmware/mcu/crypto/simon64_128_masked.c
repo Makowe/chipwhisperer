@@ -75,94 +75,46 @@ void simon64_128_encrypt(uint8_t *pt, uint8_t *ct)
         asm volatile(
             // Step 1
             "ROR %[a], %[x], #31     \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
+            // TODO: insert Dummy opertations
             "ROR %[ma], %[mx], #31   \n\t"
             // Step 2
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-
+            // TODO: insert Dummy opertations
             "ROR %[b], %[x], #24     \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-
+            // TODO: insert Dummy opertations
             "ROR %[mb], %[mx], #24   \n\t"
             // Step 3
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-
+            // TODO: insert Dummy opertations
             "AND %[c],  %[a],  %[b]  \n\t" // 3.1
+            // TODO: insert Dummy opertations
             "EOR %[c],  %[c],  %[mc] \n\t" // 3.2
+            // TODO: insert Dummy opertations
             "AND %[a],  %[a],  %[mb] \n\t" // 3.3 (a is not required anymore)
+            // TODO: insert Dummy opertations
             "EOR %[c],  %[c],  %[a]  \n\t" // 3.4
+            // TODO: insert Dummy opertations
             "AND %[b],  %[b],  %[ma] \n\t" // 3.5 (b is not required anymore)
+            // TODO: insert Dummy opertations
             "EOR %[c],  %[c],  %[b]  \n\t" // 3.6
+            // TODO: insert Dummy opertations
             "AND %[ma], %[ma], %[mb] \n\t" // 3.7 (ma is not required anymore)
+            // TODO: insert Dummy opertations
             "EOR %[c],  %[c],  %[ma] \n\t" // 3.8
+            // TODO: insert Dummy opertations
+            
+            // TODO: assign fixes registers
             : [c] "=r"(tmp2),
               [a] "=r"(tmp3), [ma] "=r"(m_tmp3),
               [b] "=r"(tmp4), [mb] "=r"(m_tmp4)
             : [x] "r"(x), [mx] "r"(mx), [mc] "r"(m_tmp2)
             : "memory");
 
-        asm volatile(
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t" :::);
-
+        // TODO: Think about implementing in assembly
         x = y ^ tmp2 ^ rot_left(x, 2) ^ expandedKey[i];
+        // TODO: insert Dummy opertations
         y = tmp;
-        asm volatile(
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t"
-            "NOP \n\t" :::);
+        // TODO: insert Dummy opertations
         mx = my ^ m_tmp2 ^ rot_left(mx, 2);
+        // TODO: insert Dummy opertations
         my = m_tmp;
     }
 
