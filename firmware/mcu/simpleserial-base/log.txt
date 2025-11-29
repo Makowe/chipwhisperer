@@ -1,0 +1,72 @@
+SS_VER set to SS_VER_1_1
+SS_VER set to SS_VER_1_1
+.
+Welcome to another exciting ChipWhisperer target build!!
+arm-none-eabi-gcc (15:13.2.rel1-2) 13.2.1 20231009
+Copyright (C) 2023 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+mkdir -p objdir-CWLITEARM 
+.
+Compiling:
+-en     simpleserial-base.c ...
+-e Done!
+.
+Compiling:
+-en     .././simpleserial/simpleserial.c ...
+-e Done!
+.
+Compiling:
+-en     .././hal/hal.c ...
+-e Done!
+.
+Compiling:
+-en     .././hal//stm32f3/stm32f3_hal.c ...
+-e Done!
+.
+Compiling:
+-en     .././hal//stm32f3/stm32f3_hal_lowlevel.c ...
+-e Done!
+.
+Compiling:
+-en     .././hal//stm32f3/stm32f3_sysmem.c ...
+-e Done!
+.
+Assembling: .././hal//stm32f3/stm32f3_startup.S
+arm-none-eabi-gcc -c -mcpu=cortex-m4 -I. -x assembler-with-cpp -mthumb -mfloat-abi=soft -fmessage-length=0 -ffunction-sections -DF_CPU=7372800 -Wa,-gstabs,-adhlns=objdir-CWLITEARM/stm32f3_startup.lst -I.././simpleserial/ -I.././hal/ -I.././hal/ -I.././hal//stm32f3 -I.././hal//stm32f3/CMSIS -I.././hal//stm32f3/CMSIS/core -I.././hal//stm32f3/CMSIS/device -I.././hal//stm32f4/Legacy -I.././simpleserial/ -I.././crypto/ .././hal//stm32f3/stm32f3_startup.S -o objdir-CWLITEARM/stm32f3_startup.o
+.
+LINKING:
+-en     simpleserial-base-CWLITEARM.elf ...
+Memory region         Used Size  Region Size  %age Used
+             RAM:        1688 B        40 KB      4.12%
+             ROM:        4776 B       256 KB      1.82%
+-e Done!
+.
+Creating load file for Flash: simpleserial-base-CWLITEARM.hex
+arm-none-eabi-objcopy -O ihex -R .eeprom -R .fuse -R .lock -R .signature simpleserial-base-CWLITEARM.elf simpleserial-base-CWLITEARM.hex
+.
+Creating load file for Flash: simpleserial-base-CWLITEARM.bin
+arm-none-eabi-objcopy -O binary -R .eeprom -R .fuse -R .lock -R .signature simpleserial-base-CWLITEARM.elf simpleserial-base-CWLITEARM.bin
+.
+Creating load file for EEPROM: simpleserial-base-CWLITEARM.eep
+arm-none-eabi-objcopy -j .eeprom --set-section-flags=.eeprom="alloc,load" \
+--change-section-lma .eeprom=0 --no-change-warnings -O ihex simpleserial-base-CWLITEARM.elf simpleserial-base-CWLITEARM.eep || exit 0
+.
+Creating Extended Listing: simpleserial-base-CWLITEARM.lss
+arm-none-eabi-objdump -h -S -z simpleserial-base-CWLITEARM.elf > simpleserial-base-CWLITEARM.lss
+.
+Creating Symbol Table: simpleserial-base-CWLITEARM.sym
+arm-none-eabi-nm -n simpleserial-base-CWLITEARM.elf > simpleserial-base-CWLITEARM.sym
+Size after:
+   text	   data	    bss	    dec	    hex	filename
+   4768	      8	   1688	   6464	   1940	simpleserial-base-CWLITEARM.elf
++--------------------------------------------------------
++ Default target does full rebuild each time.
++ Specify buildtarget == allquick == to avoid full rebuild
++--------------------------------------------------------
++--------------------------------------------------------
++ Built for platform CW-Lite Arm \(STM32F3\) with:
++ CRYPTO_TARGET = NONE
++ CRYPTO_OPTIONS = AES128C
++--------------------------------------------------------
