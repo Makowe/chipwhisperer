@@ -4,9 +4,6 @@
 #define M 4
 #define T 44
 
-#define BYTES_IN_PLAINTEXT (N / 8 * 2)
-#define BYTES_IN_KEY (N / 8 * M)
-
 const uint64_t z = 0b0011011011101011000110010111100000010010001010011100110100001111;
 uint32_t expandedKey[44];
 
@@ -29,7 +26,6 @@ void simon64_128_init(uint8_t* k)
     {
         tmp = rot_right(expandedKey[i- 1], 3) ^ expandedKey[i - 3];
         tmp ^= rot_right(tmp, 1);
-
         z_i = get_round_constant(i - M);
         expandedKey[i] = ~expandedKey[i - M] ^ tmp ^ z_i ^ 0x3;
     }
@@ -44,12 +40,7 @@ void simon64_128_encrypt(uint8_t* pt, uint8_t* ct)
     for(uint8_t i = 0; i < T; i++) 
     {
         tmp = x;
-        x = (
-            y
-            ^ (rot_left(x, 1) & rot_left(x, 8))
-            ^ rot_left(x, 2)
-            ^ expandedKey[i]
-        );
+        x = y ^ (rot_left(x, 1) & rot_left(x, 8)) ^ rot_left(x, 2) ^ expandedKey[i];
         y = tmp;
     }
 
@@ -77,5 +68,5 @@ inline uint32_t rot_right(uint32_t word, uint8_t shift)
 
 inline uint32_t get_round_constant(uint8_t i)
 {
-    return (z >> (i % 62)) & 0x1;
+    return (uint32_t)(z >> (61 - i)) & 0x1;
 }
