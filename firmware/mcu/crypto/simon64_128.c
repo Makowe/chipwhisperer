@@ -32,14 +32,15 @@ void simon64_128_set_key(uint8_t *k)
 
 void simon64_128_encrypt(uint8_t *pt, uint8_t *ct)
 {
-    uint32_t tmp;
+    uint32_t tmp, tmp2;
     uint32_t x = pt[0] << 24 | pt[1] << 16 | pt[2] << 8 | pt[3];
     uint32_t y = pt[4] << 24 | pt[5] << 16 | pt[6] << 8 | pt[7];
     trigger_high();
     for (uint8_t i = 0; i < T; i++)
     {
         tmp = x;
-        x = y ^ (rot_left(x, 1) & rot_left(x, 8)) ^ rot_left(x, 2) ^ expandedKey[i];
+        tmp2 = rot_left(x, 1) & rot_left(x, 8);
+        x = y ^ tmp2 ^ rot_left(x, 2) ^ expandedKey[i];
         y = tmp;
     }
 
