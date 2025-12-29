@@ -12,15 +12,6 @@ uint8_t get_seed(uint8_t *s, uint8_t len)
 	return 0;
 }
 
-/* Generate 8 random bytes and output them. This is used for testing the random number generator. */
-uint8_t rand_gen(uint8_t *r, uint8_t len)
-{
-	uint8_t rand[8];
-	get_rand(rand, 8);
-	simpleserial_put('r', 8, rand);
-	return 0;
-}
-
 uint8_t get_key(uint8_t *k, uint8_t len)
 {
 	simon64_128_set_key(k);
@@ -43,7 +34,6 @@ int main(void)
 
 	simpleserial_init();
 	simpleserial_addcmd('p', 8, get_pt);
-	simpleserial_addcmd('r', 0, rand_gen);
 	simpleserial_addcmd('k', 16, get_key);
 	simpleserial_addcmd('s', 48, get_seed);
 

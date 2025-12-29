@@ -21,11 +21,6 @@ void simon64_128_seed(uint8_t *seed)
     hdrbg_init(seed);
 }
 
-void get_rand(uint8_t *rand, uint8_t len)
-{
-    hdrbg_fill(rand, len);
-}
-
 void simon64_128_set_key(uint8_t *k)
 {
     uint32_t tmp;
@@ -97,10 +92,13 @@ void simon64_128_encrypt(uint8_t *pt, uint8_t *ct)
     trigger_low();
 }
 
+#pragma GCC push_options
+#pragma GCC optimize("O0")
 static inline uint32_t masked_and(uint32_t a, uint32_t ma, uint32_t b, uint32_t mb, uint32_t mc)
 {
     return ((((a & b) ^ mc) ^ (a & mb)) ^ (b & ma)) ^ (ma & mb);
 }
+#pragma GCC pop_options
 
 static inline uint32_t rot_left(uint32_t word, uint8_t shift)
 {
