@@ -1,4 +1,5 @@
-#include "simon64_128.h"
+#include "simon64_128_masked.h"
+#include "hdrbg.h"
 
 #define N 32
 #define M 4
@@ -7,9 +8,23 @@
 const uint64_t z = 0b0011011011101011000110010111100000010010001010011100110100001111;
 uint32_t expandedKey[T];
 
+/* One mask for x, one mask for y and one mask for each and-operation per round. */
+uint32_t masks[T + 2];
+
+static inline uint32_t masked_and(uint32_t a, uint32_t ma, uint32_t b, uint32_t mb, uint32_t mc);
 static inline uint32_t rot_left(uint32_t word, uint8_t shift);
 static inline uint32_t rot_right(uint32_t word, uint8_t shift);
 static inline uint32_t get_round_constant(uint8_t i);
+
+void simon64_128_seed(uint8_t *seed)
+{
+    hdrbg_init(seed);
+}
+
+void get_rand(uint8_t *rand, uint8_t len)
+{
+    hdrbg_fill(rand, len);
+}
 
 void simon64_128_set_key(uint8_t *k)
 {
@@ -32,16 +47,44 @@ void simon64_128_set_key(uint8_t *k)
 
 void simon64_128_encrypt(uint8_t *pt, uint8_t *ct)
 {
-    uint32_t tmp;
+    uint32_t tmp, m_tmp, tmp2, m_tmp2;
+
+    hdrbg_fill((uint8_t *)masks, (T + 2) * 4);
+
+    /* variables */
     uint32_t x = pt[0] << 24 | pt[1] << 16 | pt[2] << 8 | pt[3];
     uint32_t y = pt[4] << 24 | pt[5] << 16 | pt[6] << 8 | pt[7];
+    uint32_t mx = masks[0];
+    uint32_t my = masks[1];
+
+    /* Apply mask here */
+    x ^= mx;
+    y ^= my;
+
     trigger_high();
     for (uint8_t i = 0; i < T; i++)
     {
         tmp = x;
-        x = y ^ (rot_left(x, 1) & rot_left(x, 8)) ^ rot_left(x, 2) ^ expandedKey[i];
+        m_tmp = mx;
+
+        m_tmp2 = masks[i + 2];
+        tmp2 = masked_and(
+            rot_left(x, 1),
+            rot_left(mx, 1),
+            rot_left(x, 8),
+            rot_left(mx, 8),
+            m_tmp2);
+
+        x = y ^ tmp2 ^ rot_left(x, 2) ^ expandedKey[i];
+        mx = my ^ m_tmp2 ^ rot_left(mx, 2);
+
         y = tmp;
+        my = m_tmp;
     }
+
+    /* Unmask the result */
+    x ^= mx;
+    y ^= my;
 
     ct[0] = (x >> 24);
     ct[1] = (x >> 16) & 0xFF;
@@ -52,6 +95,11 @@ void simon64_128_encrypt(uint8_t *pt, uint8_t *ct)
     ct[6] = (y >> 8) & 0xFF;
     ct[7] = y & 0xFF;
     trigger_low();
+}
+
+static inline uint32_t masked_and(uint32_t a, uint32_t ma, uint32_t b, uint32_t mb, uint32_t mc)
+{
+    return ((((a & b) ^ mc) ^ (a & mb)) ^ (b & ma)) ^ (ma & mb);
 }
 
 static inline uint32_t rot_left(uint32_t word, uint8_t shift)

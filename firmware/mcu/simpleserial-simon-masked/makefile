@@ -30,11 +30,11 @@
 
 # Target file name (without extension).
 # This is the name of the compiled .hex file.
-TARGET = simpleserial-simon
+TARGET = simpleserial-simon-masked
 
 # List C source files here.
 # Header files (.h) are automatically pulled in.
-SRC += simpleserial-simon.c
+SRC += simpleserial-simon-masked.c
 
 # -----------------------------------------------------------------------------
 

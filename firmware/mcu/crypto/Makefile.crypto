@@ -72,6 +72,11 @@ else ifeq ($(CRYPTO_TARGET),MICROECC)
 else ifeq ($(CRYPTO_TARGET),SIMON)
   SRC += simon64_128.c
 
+else ifeq ($(CRYPTO_TARGET),SIMON_MASKED)
+  SRC += simon64_128_masked.c sha256.c hdrbg.c extras.c
+  VPATH += :$(FIRMWAREPATH)/crypto/hash-drbg
+  EXTRAINCDIRS += $(FIRMWAREPATH)/crypto/hash-drbg
+
 else ifeq ($(CRYPTO_TARGET),NONE)
   #Nothing to do :)
 
