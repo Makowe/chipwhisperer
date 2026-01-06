@@ -8,9 +8,6 @@
 const uint64_t z = 0b0011011011101011000110010111100000010010001010011100110100001111;
 uint32_t expandedKey[T];
 
-/* One mask for x, one mask for y and one mask for each and-operation per round. */
-uint32_t masks[T + 2];
-
 static inline uint32_t masked_and(uint32_t a, uint32_t ma, uint32_t b, uint32_t mb, uint32_t mc);
 static inline uint32_t rot_left(uint32_t word, uint8_t shift);
 static inline uint32_t rot_right(uint32_t word, uint8_t shift);
@@ -44,15 +41,16 @@ void simon64_128_encrypt(uint8_t *pt, uint8_t *ct)
 {
     uint32_t tmp, m_tmp, tmp2, m_tmp2;
 
+    /* Initialize 1 mask for x, one for y and one mask for each and-operation per round. */
+    uint32_t masks[T + 2];
     hdrbg_fill((uint8_t *)masks, (T + 2) * 4);
 
-    /* variables */
     uint32_t x = pt[0] << 24 | pt[1] << 16 | pt[2] << 8 | pt[3];
     uint32_t y = pt[4] << 24 | pt[5] << 16 | pt[6] << 8 | pt[7];
     uint32_t mx = masks[0];
     uint32_t my = masks[1];
 
-    /* Apply mask here */
+    /* Apply mask */
     x ^= mx;
     y ^= my;
 
@@ -92,13 +90,10 @@ void simon64_128_encrypt(uint8_t *pt, uint8_t *ct)
     trigger_low();
 }
 
-#pragma GCC push_options
-#pragma GCC optimize("O0")
 static inline uint32_t masked_and(uint32_t a, uint32_t ma, uint32_t b, uint32_t mb, uint32_t mc)
 {
     return ((((a & b) ^ mc) ^ (a & mb)) ^ (b & ma)) ^ (ma & mb);
 }
-#pragma GCC pop_options
 
 static inline uint32_t rot_left(uint32_t word, uint8_t shift)
 {
