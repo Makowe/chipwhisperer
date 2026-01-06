@@ -39,7 +39,8 @@ void simon64_128_set_key(uint8_t *k)
 
 void simon64_128_encrypt(uint8_t *pt, uint8_t *ct)
 {
-    uint32_t tmp, m_tmp, tmp2, m_tmp2;
+    uint32_t tmp, tmp2, tmp3, tmp4;
+    uint32_t m_tmp, m_tmp2, m_tmp3, m_tmp4;
 
     /* Initialize 1 mask for x, one for y and one mask for each and-operation per round. */
     uint32_t masks[T + 2];
@@ -59,14 +60,37 @@ void simon64_128_encrypt(uint8_t *pt, uint8_t *ct)
     {
         tmp = x;
         m_tmp = mx;
-
         m_tmp2 = masks[i + 2];
-        tmp2 = masked_and(
-            rot_left(x, 1),
-            rot_left(mx, 1),
-            rot_left(x, 8),
-            rot_left(mx, 8),
-            m_tmp2);
+
+        /* Perform masked AND operation of (x <<< 1) and (x <<< 8).
+        The result c will be available in the variable tmp2.
+        Step 1: a  = x <<< 1
+                ma = mx <<< 1
+        Step 2: b  = x <<< 8
+                mb = mx <<< 8
+        Step 3: c = ((((a & b) ^ mc) ^ (a & mb)) ^ (b & ma)) ^ (ma & mb)
+        */
+        asm volatile(
+            // Step 1
+            "ROR %[a], %[x], #31         \n\t"
+            "ROR %[ma], %[mx], #31      \n\t"
+            // Step 2
+            "ROR %[b], %[x], #24         \n\t"
+            "ROR %[mb], %[mx], #24      \n\t"
+            // Step 3
+            "AND %[c],  %[a],  %[b]  \n\t" // (a & b)
+            "EOR %[c],  %[c],  %[mc] \n\t" // (a & b) ^ mc
+            "AND %[a],  %[a],  %[mb] \n\t" // (a & mb) (a is not required anymore)
+            "EOR %[c],  %[c],  %[a]  \n\t" // ((a & b) ^ mc) ^ (a & mb)
+            "AND %[b],  %[b],  %[ma] \n\t" // (b & ma) (b is not required anymore)
+            "EOR %[c],  %[c],  %[b]  \n\t" // (((a & b) ^ mc) ^ (a & mb)) ^ (b & ma)
+            "AND %[ma], %[ma], %[mb] \n\t" // (ma & mb) (ma is not required anymore)
+            "EOR %[c],  %[c],  %[ma] \n\t" // ((((a & b) ^ mc) ^ (a & mb)) ^ (b & ma)) ^ (ma & mb)
+            : [c] "=r"(tmp2),
+              [a] "=r"(tmp3), [ma] "=r"(m_tmp3),
+              [b] "=r"(tmp4), [mb] "=r"(m_tmp4)
+            : [x] "r"(x), [mx] "r"(mx), [mc] "r"(m_tmp2)
+            : "memory");
 
         x = y ^ tmp2 ^ rot_left(x, 2) ^ expandedKey[i];
         mx = my ^ m_tmp2 ^ rot_left(mx, 2);
@@ -87,6 +111,15 @@ void simon64_128_encrypt(uint8_t *pt, uint8_t *ct)
     ct[5] = (y >> 16) & 0xFF;
     ct[6] = (y >> 8) & 0xFF;
     ct[7] = y & 0xFF;
+    ct[8] = masks[0];
+    ct[9] = masks[1];
+    ct[10] = masks[2];
+    ct[11] = masks[3];
+    ct[12] = masks[4];
+    ct[13] = masks[5];
+    ct[14] = masks[44];
+    ct[15] = masks[45];
+
     trigger_low();
 }
 
