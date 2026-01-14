@@ -20,9 +20,9 @@ uint8_t get_key(uint8_t *k, uint8_t len)
 
 uint8_t get_pt(uint8_t *pt, uint8_t len)
 {
-	uint8_t ct[16];
+	uint8_t ct[8];
 	simon64_128_encrypt(pt, ct);
-	simpleserial_put('r', 16, ct);
+	simpleserial_put('r', 8, ct);
 	return 0;
 }
 

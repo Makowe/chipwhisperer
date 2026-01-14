@@ -69,33 +69,100 @@ void simon64_128_encrypt(uint8_t *pt, uint8_t *ct)
         Step 2: b  = x <<< 8
                 mb = mx <<< 8
         Step 3: c = ((((a & b) ^ mc) ^ (a & mb)) ^ (b & ma)) ^ (ma & mb)
+                          |    |     |    |      |    |      |     |
+                          1    2     4    3      6    5      8     7
         */
         asm volatile(
             // Step 1
-            "ROR %[a], %[x], #31         \n\t"
-            "ROR %[ma], %[mx], #31      \n\t"
+            "ROR %[a], %[x], #31     \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "ROR %[ma], %[mx], #31   \n\t"
             // Step 2
-            "ROR %[b], %[x], #24         \n\t"
-            "ROR %[mb], %[mx], #24      \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+
+            "ROR %[b], %[x], #24     \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+
+            "ROR %[mb], %[mx], #24   \n\t"
             // Step 3
-            "AND %[c],  %[a],  %[b]  \n\t" // (a & b)
-            "EOR %[c],  %[c],  %[mc] \n\t" // (a & b) ^ mc
-            "AND %[a],  %[a],  %[mb] \n\t" // (a & mb) (a is not required anymore)
-            "EOR %[c],  %[c],  %[a]  \n\t" // ((a & b) ^ mc) ^ (a & mb)
-            "AND %[b],  %[b],  %[ma] \n\t" // (b & ma) (b is not required anymore)
-            "EOR %[c],  %[c],  %[b]  \n\t" // (((a & b) ^ mc) ^ (a & mb)) ^ (b & ma)
-            "AND %[ma], %[ma], %[mb] \n\t" // (ma & mb) (ma is not required anymore)
-            "EOR %[c],  %[c],  %[ma] \n\t" // ((((a & b) ^ mc) ^ (a & mb)) ^ (b & ma)) ^ (ma & mb)
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+
+            "AND %[c],  %[a],  %[b]  \n\t" // 3.1
+            "EOR %[c],  %[c],  %[mc] \n\t" // 3.2
+            "AND %[a],  %[a],  %[mb] \n\t" // 3.3 (a is not required anymore)
+            "EOR %[c],  %[c],  %[a]  \n\t" // 3.4
+            "AND %[b],  %[b],  %[ma] \n\t" // 3.5 (b is not required anymore)
+            "EOR %[c],  %[c],  %[b]  \n\t" // 3.6
+            "AND %[ma], %[ma], %[mb] \n\t" // 3.7 (ma is not required anymore)
+            "EOR %[c],  %[c],  %[ma] \n\t" // 3.8
             : [c] "=r"(tmp2),
               [a] "=r"(tmp3), [ma] "=r"(m_tmp3),
               [b] "=r"(tmp4), [mb] "=r"(m_tmp4)
             : [x] "r"(x), [mx] "r"(mx), [mc] "r"(m_tmp2)
             : "memory");
 
-        x = y ^ tmp2 ^ rot_left(x, 2) ^ expandedKey[i];
-        mx = my ^ m_tmp2 ^ rot_left(mx, 2);
+        asm volatile(
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t" :::);
 
+        x = y ^ tmp2 ^ rot_left(x, 2) ^ expandedKey[i];
         y = tmp;
+        asm volatile(
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t"
+            "NOP \n\t" :::);
+        mx = my ^ m_tmp2 ^ rot_left(mx, 2);
         my = m_tmp;
     }
 
@@ -111,14 +178,6 @@ void simon64_128_encrypt(uint8_t *pt, uint8_t *ct)
     ct[5] = (y >> 16) & 0xFF;
     ct[6] = (y >> 8) & 0xFF;
     ct[7] = y & 0xFF;
-    ct[8] = masks[0];
-    ct[9] = masks[1];
-    ct[10] = masks[2];
-    ct[11] = masks[3];
-    ct[12] = masks[4];
-    ct[13] = masks[5];
-    ct[14] = masks[44];
-    ct[15] = masks[45];
 
     trigger_low();
 }
