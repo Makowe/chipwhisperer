@@ -8,8 +8,6 @@
 const uint64_t z = 0b0011011011101011000110010111100000010010001010011100110100001111;
 uint32_t expandedKey[T];
 
-static inline uint32_t masked_and(uint32_t a, uint32_t ma, uint32_t b, uint32_t mb, uint32_t mc);
-static inline uint32_t rot_left(uint32_t word, uint8_t shift);
 static inline uint32_t rot_right(uint32_t word, uint8_t shift);
 static inline uint32_t get_round_constant(uint8_t i);
 
@@ -48,10 +46,10 @@ void simon64_128_encrypt(uint8_t *pt, uint8_t *ct)
 
     x = pt[0] << 24 | pt[1] << 16 | pt[2] << 8 | pt[3];
     y = pt[4] << 24 | pt[5] << 16 | pt[6] << 8 | pt[7];
+
     mx = masks[0];
     my = masks[1];
 
-    /* Apply mask */
     x ^= mx;
     y ^= my;
 
@@ -75,10 +73,10 @@ void simon64_128_encrypt(uint8_t *pt, uint8_t *ct)
         Step 5: m_tmp = mx
                 mx = mx <<< 2
 
-        Step 6: x = y ^ tmp2 ^ x ^ round_key
+        Step 6: x = y ^ c ^ x ^ round_key
                 y = tmp
 
-        Step 7: mx = my ^ m_tmp2 ^ mx
+        Step 7: mx = my ^ mc ^ mx
                 my = m_tmp
         */
         asm volatile(
@@ -117,7 +115,6 @@ void simon64_128_encrypt(uint8_t *pt, uint8_t *ct)
             "AND r5, r5, r11 \n\t" // 3.7
             // TODO: insert Dummy opertations
             "EOR r8,  r8,  r5 \n\t" // 3.8
-            // r8 = c
 
             // TODO: insert Dummy opertations
 
@@ -163,16 +160,6 @@ void simon64_128_encrypt(uint8_t *pt, uint8_t *ct)
     ct[7] = y & 0xFF;
 
     trigger_low();
-}
-
-static inline uint32_t masked_and(uint32_t a, uint32_t ma, uint32_t b, uint32_t mb, uint32_t mc)
-{
-    return ((((a & b) ^ mc) ^ (a & mb)) ^ (b & ma)) ^ (ma & mb);
-}
-
-static inline uint32_t rot_left(uint32_t word, uint8_t shift)
-{
-    return (word << shift) | (word >> (N - shift));
 }
 
 static inline uint32_t rot_right(uint32_t word, uint8_t shift)
