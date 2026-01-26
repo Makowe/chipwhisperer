@@ -37,19 +37,19 @@ void simon64_128_set_key(uint8_t *k)
     }
 }
 
+/* __attribute__((optimize("O0"))) */
 void simon64_128_encrypt(uint8_t *pt, uint8_t *ct)
 {
-    uint32_t tmp, tmp2, tmp3, tmp4;
-    uint32_t m_tmp, m_tmp2, m_tmp3, m_tmp4;
+    uint32_t x, y, mx, my;
 
-    /* Initialize 1 mask for x, one for y and one mask for each and-operation per round. */
+    /* Initialize 1 mask for x, 1 for y and 44 masks for the AND-Gates in each round. */
     uint32_t masks[T + 2];
     hdrbg_fill((uint8_t *)masks, (T + 2) * 4);
 
-    uint32_t x = pt[0] << 24 | pt[1] << 16 | pt[2] << 8 | pt[3];
-    uint32_t y = pt[4] << 24 | pt[5] << 16 | pt[6] << 8 | pt[7];
-    uint32_t mx = masks[0];
-    uint32_t my = masks[1];
+    x = pt[0] << 24 | pt[1] << 16 | pt[2] << 8 | pt[3];
+    y = pt[4] << 24 | pt[5] << 16 | pt[6] << 8 | pt[7];
+    mx = masks[0];
+    my = masks[1];
 
     /* Apply mask */
     x ^= mx;
@@ -58,66 +58,97 @@ void simon64_128_encrypt(uint8_t *pt, uint8_t *ct)
     trigger_high();
     for (uint8_t i = 0; i < T; i++)
     {
-        tmp = x;
-        m_tmp = mx;
-        m_tmp2 = masks[i + 2];
+        uint32_t key = expandedKey[i];
+        uint32_t mc = masks[i + 2];
 
-        /* Perform masked AND operation of (x <<< 1) and (x <<< 8).
-        The result c will be available in the variable tmp2.
+        /* Perform Simon Round Function with masked AND-Gate.
         Step 1: a  = x <<< 1
-                ma = mx <<< 1
-        Step 2: b  = x <<< 8
+                b  = x <<< 8
+        Step 2: ma = mx <<< 1
                 mb = mx <<< 8
         Step 3: c = ((((a & b) ^ mc) ^ (a & mb)) ^ (b & ma)) ^ (ma & mb)
                           |    |     |    |      |    |      |     |
                           1    2     4    3      6    5      8     7
+        Step 4: tmp = x
+                x = x <<< 2
+
+        Step 5: m_tmp = mx
+                mx = mx <<< 2
+
+        Step 6: x = y ^ tmp2 ^ x ^ round_key
+                y = tmp
+
+        Step 7: mx = my ^ m_tmp2 ^ mx
+                my = m_tmp
         */
         asm volatile(
+            // TODO: Clear registers from previous round
+            // TODO: insert Dummy opertations
             // Step 1
-            "ROR %[a], %[x], #31     \n\t"
+            "ROR r4, %[x], #31     \n\t"
+            "ROR r6, %[x], #24     \n\t"
+            /* Register values:
+             * r4 = a
+             * r6 = b
+             */
             // TODO: insert Dummy opertations
-            "ROR %[ma], %[mx], #31   \n\t"
             // Step 2
+            "ROR r5, %[mx], #31   \n\t"
+            "ROR r11, %[mx], #24   \n\t"
+            /* Register values:
+             * r5 = ma
+             * r11 = mb
+             */
+
             // TODO: insert Dummy opertations
-            "ROR %[b], %[x], #24     \n\t"
-            // TODO: insert Dummy opertations
-            "ROR %[mb], %[mx], #24   \n\t"
+
             // Step 3
+            "AND r8, r4, r6  \n\t" // 3.1
             // TODO: insert Dummy opertations
-            "AND %[c],  %[a],  %[b]  \n\t" // 3.1
+            "EOR r8,  r8,  %[mc] \n\t" // 3.2
+            "AND r4,  r4,  r11 \n\t"   // 3.3
             // TODO: insert Dummy opertations
-            "EOR %[c],  %[c],  %[mc] \n\t" // 3.2
+            "EOR r8,  r8,  r4  \n\t" // 3.4
             // TODO: insert Dummy opertations
-            "AND %[a],  %[a],  %[mb] \n\t" // 3.3 (a is not required anymore)
+            "AND r6,  r6,  r5 \n\t" // 3.5
             // TODO: insert Dummy opertations
-            "EOR %[c],  %[c],  %[a]  \n\t" // 3.4
+            "EOR r8,  r8,  r6  \n\t" // 3.6
             // TODO: insert Dummy opertations
-            "AND %[b],  %[b],  %[ma] \n\t" // 3.5 (b is not required anymore)
+            "AND r5, r5, r11 \n\t" // 3.7
             // TODO: insert Dummy opertations
-            "EOR %[c],  %[c],  %[b]  \n\t" // 3.6
-            // TODO: insert Dummy opertations
-            "AND %[ma], %[ma], %[mb] \n\t" // 3.7 (ma is not required anymore)
-            // TODO: insert Dummy opertations
-            "EOR %[c],  %[c],  %[ma] \n\t" // 3.8
-            // TODO: insert Dummy opertations
-            
-            // TODO: assign fixes registers
-            : [c] "=r"(tmp2),
-              [a] "=r"(tmp3), [ma] "=r"(m_tmp3),
-              [b] "=r"(tmp4), [mb] "=r"(m_tmp4)
-            : [x] "r"(x), [mx] "r"(mx), [mc] "r"(m_tmp2)
-            : "memory");
+            "EOR r8,  r8,  r5 \n\t" // 3.8
+            // r8 = c
 
-        // TODO: Think about implementing in assembly
-        x = y ^ tmp2 ^ rot_left(x, 2) ^ expandedKey[i];
-        // TODO: insert Dummy opertations
-        y = tmp;
-        // TODO: insert Dummy opertations
-        mx = my ^ m_tmp2 ^ rot_left(mx, 2);
-        // TODO: insert Dummy opertations
-        my = m_tmp;
+            // TODO: insert Dummy opertations
+
+            // Step 4
+            "MOV r4, %[x]        \n\t"
+            "ROR %[x], %[x], #30   \n\t"
+
+            // TODO: insert Dummy opertations
+
+            // Step 5
+            "MOV r5, %[mx]       \n\t"
+            "ROR %[mx], %[mx], #30   \n\t"
+
+            // TODO: insert Dummy opertations
+
+            // Step 6
+            "EOR %[y], %[y], r8    \n\t"
+            "EOR %[x], %[x], %[key]   \n\t"
+            "EOR %[x], %[x], %[y]    \n\t"
+            "MOV %[y], r4        \n\t"
+
+            // TODO: insert Dummy opertations
+
+            // Step 7
+            "EOR %[my], %[my], %[mc]    \n\t"
+            "EOR %[mx], %[mx], %[my]    \n\t"
+            "MOV %[my], r5        \n\t"
+            : [x] "+r"(x), [y] "+r"(y), [mx] "+r"(mx), [my] "+r"(my)
+            : [key] "r"(key), [mc] "r"(mc)
+            : "r4", "r5", "r6", "r11", "r8", "cc", "memory");
     }
-
     /* Unmask the result */
     x ^= mx;
     y ^= my;
