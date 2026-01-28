@@ -54,98 +54,106 @@ void simon64_128_encrypt(uint8_t *pt, uint8_t *ct)
     y ^= my;
 
     trigger_high();
-    for (uint8_t i = 0; i < T; i++)
-    {
-        uint32_t key = expandedKey[i];
-        uint32_t mc = masks[i + 2];
 
-        /* Perform Simon Round Function with masked AND-Gate.
-        Step 1: a  = x <<< 1
-                b  = x <<< 8
-        Step 2: ma = mx <<< 1
-                mb = mx <<< 8
-        Step 3: c = ((((a & b) ^ mc) ^ (a & mb)) ^ (b & ma)) ^ (ma & mb)
-                          |    |     |    |      |    |      |     |
-                          1    2     4    3      6    5      8     7
-        Step 4: tmp = x
-                x = x <<< 2
+    /* Pointers required for asm */
+    uint32_t *keys = expandedKey;
+    uint32_t *mc = masks + 2;
 
-        Step 5: m_tmp = mx
-                mx = mx <<< 2
+    /* Perform Simon Round Function with masked AND-Gate. */
+    asm volatile(
+        /* Initialize Loop */
+        "MOV r0, 0                  \n\t"
+        /* Keep r10 constant as 0. */
+        "EOR r10, r10, r10          \n\t"
+        "EOR r4,  r10, r10          \n\t"
+        "EOR r5,  r10, r10          \n\t"
+        "EOR r6,  r10, r10          \n\t"
+        "EOR r8,  r10, r10          \n\t"
+        "EOR r11, r10, r10          \n\t"
+        "simon_round:               \n\t"
 
-        Step 6: x = y ^ c ^ x ^ round_key
-                y = tmp
+        /* Load round mask mc */
+        "LDR r9, [%[mc]], #4        \n\t"
+        "EOR r10, r10, r10          \n\t"
 
-        Step 7: mx = my ^ mc ^ mx
-                my = m_tmp
-        */
-        asm volatile(
-            // TODO: Clear registers from previous round
-            // TODO: insert Dummy opertations
-            // Step 1
-            "ROR r4, %[x], #31     \n\t"
-            "ROR r6, %[x], #24     \n\t"
-            /* Register values:
-             * r4 = a
-             * r6 = b
-             */
-            // TODO: insert Dummy opertations
-            // Step 2
-            "ROR r5, %[mx], #31   \n\t"
-            "ROR r11, %[mx], #24   \n\t"
-            /* Register values:
-             * r5 = ma
-             * r11 = mb
-             */
+        /* a  = x <<< 1
+         * b  = x <<< 8 */
+        "ROR r4, %[x], #31          \n\t"
+        "ROR r6, %[x], #24          \n\t"
+        "EOR r10, r10, r10          \n\t"
 
-            // TODO: insert Dummy opertations
+        /* ma = mx <<< 1
+         * mb = mx <<< 8 */
+        "ROR r5,  %[mx], #31        \n\t"
+        "ROR r11, %[mx], #24        \n\t"
+        "EOR r10, r10, r10          \n\t"
 
-            // Step 3
-            "AND r8, r4, r6  \n\t" // 3.1
-            // TODO: insert Dummy opertations
-            "EOR r8,  r8,  %[mc] \n\t" // 3.2
-            "AND r4,  r4,  r11 \n\t"   // 3.3
-            // TODO: insert Dummy opertations
-            "EOR r8,  r8,  r4  \n\t" // 3.4
-            // TODO: insert Dummy opertations
-            "AND r6,  r6,  r5 \n\t" // 3.5
-            // TODO: insert Dummy opertations
-            "EOR r8,  r8,  r6  \n\t" // 3.6
-            // TODO: insert Dummy opertations
-            "AND r5, r5, r11 \n\t" // 3.7
-            // TODO: insert Dummy opertations
-            "EOR r8,  r8,  r5 \n\t" // 3.8
+        /* Masked AND-Gate
+         * c = ((((a & b) ^ mc) ^ (a & mb)) ^ (b & ma)) ^ (ma & mb)
+         *           |    |     |    |      |    |      |     |
+         *           1    2     4    3      6    5      8     7 */
 
-            // TODO: insert Dummy opertations
+        "AND r8, r4, r6             \n\t" // 3.1
+        "EOR r10, r10, r10          \n\t"
+        "EOR r8, r8, r9             \n\t" // 3.2
+        "AND r4, r4, r11            \n\t" // 3.3
+        "EOR r10, r10, r10          \n\t"
+        "EOR r8, r8, r4             \n\t" // 3.4
+        "EOR r10, r10, r10          \n\t"
+        "AND r6, r6, r5             \n\t" // 3.5
+        "EOR r10, r10, r10          \n\t"
+        "EOR r8, r8, r6             \n\t" // 3.6
+        "EOR r10, r10, r10          \n\t"
+        "AND r5, r5, r11            \n\t" // 3.7
+        "EOR r10, r10, r10          \n\t"
+        "EOR r8, r8, r5             \n\t" // 3.8
+        /* Clear temporary registers except r8 */
+        "EOR r4, r10, r10           \n\t"
+        "EOR r5, r10, r10           \n\t"
+        "EOR r6, r10, r10           \n\t"
+        "EOR r11, r10, r10          \n\t"
 
-            // Step 4
-            "MOV r4, %[x]        \n\t"
-            "ROR %[x], %[x], #30   \n\t"
+        /* Load round key */
+        "LDR r11, [%[keys]], #4     \n\t"
 
-            // TODO: insert Dummy opertations
+        /* tmp = x
+         * x = x <<< 2 */
+        "MOV r4,   %[x]             \n\t"
+        "ROR %[x], %[x], #30        \n\t"
+        "EOR r10, r10, r10          \n\t"
 
-            // Step 5
-            "MOV r5, %[mx]       \n\t"
-            "ROR %[mx], %[mx], #30   \n\t"
+        /* m_tmp = mx
+         * mx = mx <<< 2 */
+        "MOV r5,    %[mx]           \n\t"
+        "ROR %[mx], %[mx], #30      \n\t"
+        "EOR r10, r10, r10          \n\t"
 
-            // TODO: insert Dummy opertations
+        /* x = y ^ c ^ x ^ round_key
+         * y = tmp */
+        "EOR %[y], %[y], r11        \n\t"
+        "EOR %[x], %[x], r8         \n\t"
+        "EOR %[x], %[x], %[y]       \n\t"
+        "MOV %[y], r4               \n\t"
+        /* clear r4 and r8 */
+        "EOR r4, r10, r10           \n\t"
+        "EOR r8, r10, r10           \n\t"
 
-            // Step 6
-            "EOR %[y], %[y], r8    \n\t"
-            "EOR %[x], %[x], %[key]   \n\t"
-            "EOR %[x], %[x], %[y]    \n\t"
-            "MOV %[y], r4        \n\t"
+        /* mx = my ^ mc ^ mx
+         * my = m_tmp */
+        "EOR %[my], %[my], r9       \n\t"
+        "EOR %[mx], %[mx], %[my]    \n\t"
+        "MOV %[my], r5              \n\t"
+        /* clear r5 */
+        "EOR r5, r10, r10           \n\t"
 
-            // TODO: insert Dummy opertations
+        "ADD r0, r0, #1             \n\t"
+        "CMP r0, #44                \n\t"
+        "BNE simon_round            \n\t"
 
-            // Step 7
-            "EOR %[my], %[my], %[mc]    \n\t"
-            "EOR %[mx], %[mx], %[my]    \n\t"
-            "MOV %[my], r5        \n\t"
-            : [x] "+r"(x), [y] "+r"(y), [mx] "+r"(mx), [my] "+r"(my)
-            : [key] "r"(key), [mc] "r"(mc)
-            : "r4", "r5", "r6", "r11", "r8", "cc", "memory");
-    }
+        : [x] "+r"(x), [y] "+r"(y), [mx] "+r"(mx), [my] "+r"(my)
+        : [keys] "r"(keys), [mc] "r"(mc)
+        : "r0", "r4", "r5", "r6", "r8", "r9", "r10", "r11", "cc", "memory");
+
     /* Unmask the result */
     x ^= mx;
     y ^= my;
